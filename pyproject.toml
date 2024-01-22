@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools", "setuptools_scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "typed_configparser"
+authors = [{ name = "Ankit Jain", email = "ajatkj.dev@gmail.com" }]
+description = "A typed configparser"
+readme = "README.md"
+requires-python = ">=3.8"
+keywords = ["configparser", "typde"]
+license = { text = "GPL" }
+dynamic = ["version"]
+
+[tool.setuptools.packages.find]
+exclude = ["typed_configparser.tests*", "types_configparser.examples"]
+
+[tool.mypy]
+strict = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+ignore_missing_imports = true
+check_untyped_defs = true
+
+[tool.ruff]
+line-length = 122
+
+[tool.poe.tasks]
+_format = "ruff format -q ."
+_format_check = "ruff format --check -q ."
+_lint = "ruff ."
+_mypy = "mypy  --install-types --non-interactive ."
+
+[tool.poe.tasks.lint]
+sequence = ["_lint", "_format", "_mypy"]
+help = "Lint code and report any issues."
+
+[tool.poe.tasks.check]
+sequence = ["_lint", "_format_check", "_mypy"]
+help = "Check linting, formatting and static analysis and report any issues."
+
+[tool.poe.tasks.clean]
+shell = """
+rm -rf `find . -name __pycache__`
+"""
+help = "Clear all cache."
+
+[tool.poe.tasks.test]
+cmd = "python3 -m unittest -v tests/tests.py"

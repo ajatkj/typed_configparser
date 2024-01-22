@@ -1,0 +1,4 @@
+mypy
+ruff
+poethepoet
+pre-commit

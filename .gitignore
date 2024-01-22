@@ -1,0 +1,20 @@
+.mypy_cache
+.nox
+.ruff_cache
+.vscode
+__pycache__
+dist
+site
+env
+env*
+venv
+*.egg-info
+build
+
+# vim temporary files
+*~
+.*.sw?
+.cache
+
+# macOS
+.DS_Store
