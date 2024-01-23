@@ -5,15 +5,28 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "typed_configparser"
 authors = [{ name = "Ankit Jain", email = "ajatkj.dev@gmail.com" }]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Typing :: Typed",
+]
 description = "A typed configparser"
 readme = "README.md"
 requires-python = ">=3.8"
-keywords = ["configparser", "typde"]
-license = { text = "GPL" }
+keywords = ["configparser", "typed"]
+license = { text = "MIT" }
 dynamic = ["version"]
 
+[project.urls]
+Repository = "https://github.com/ajatkj/typed_configparser"
+
 [tool.setuptools.packages.find]
-exclude = ["typed_configparser.tests*", "types_configparser.examples"]
+exclude = ["typed_configparser.tests*", "typed_configparser.examples*"]
 
 [tool.setuptools_scm]
 
