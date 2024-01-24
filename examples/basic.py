@@ -18,7 +18,7 @@ config = """
 option1 = 10
 option2 = value2
 option3 = 5.2
-option4 = foo,bar
+option4 = [foo,bar]
 """
 
 parser = ConfigParser()
