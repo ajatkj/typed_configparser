@@ -3,13 +3,13 @@
 </p>
 <p align="center">
 <a href="https://github.com/ajatkj/typed_configparser/actions?query=workflow%3ATest+event%3Apush+branch%3Amain" target="_blank">
-    <img src="https://img.shields.io/github/actions/workflow/status/ajatkj/typed_configparser/tests.yml?branch=main&event=push&style=flat-square&label=test" alt="Test">
+    <img src="https://img.shields.io/github/actions/workflow/status/ajatkj/typed_configparser/tests.yml?branch=main&event=push&style=flat-square&label=test&color=%2334D058" alt="Test">
 </a>
   <a href="https://pypi.org/project/typed-configparser" target="_blank">
       <img src="https://img.shields.io/pypi/v/typed-configparser?color=%2334D058&label=pypi%20package&style=flat-square" alt="Package version">
   </a>
   <a href="https://pypi.org/project/typed-configparser" target="_blank">
-      <img src="https://img.shields.io/pypi/pyversions/typed-config-parser?color=%2334D058&style=flat-square" alt="Supported Python versions">
+      <img src="https://img.shields.io/pypi/pyversions/typed-configparser?color=%2334D058&style=flat-square" alt="Supported Python versions">
   </a>
 </p>
 
@@ -32,59 +32,93 @@ It leverages Python's type hints and dataclasses to provide a convenient way of 
 You can install `typed_configparser` using `pip`:
 
 ```sh
-pip install typed_configparser
+pip install typed-configparser
 ```
 
 ## Usage
 
-`basic_example.py`
+`examples/basic.py`
 
 ```py3
-import dataclasses
+# This is a complete example and should work as is
+
+from typing import List
 from typed_configparser import ConfigParser
+from dataclasses import dataclass
 
-@dataclasses.dataclass
-class AppConfig:
-    host: str
-    port: int
-    debug: bool
 
-# Create an instance of Typed ConfigParser
-config_parser = ConfigParser()
-config_parser.read("conf.ini")
+@dataclass
+class BASIC:
+    option1: int
+    option2: str
+    option3: float
+    option4: List[str]
 
-app_config = config_parser.parse_section(AppConfig, section_name='AppSection')
 
-print(f"Host: {app_config.host}")
-print(f"Port: {app_config.port}")
-print(f"Debug Mode: {app_config.debug}")
+config = """
+[BASIC]
+option1 = 10
+option2 = value2
+option3 = 5.2
+option4 = [foo,bar]
+"""
+
+parser = ConfigParser()
+parser.read_string(config)
+section = parser.parse_section(using_dataclass=BASIC)
+
+print(section)
 ```
-
-`conf.ini`
-
-```ini
-[AppSection]
-host = localhost
-port = 8080
-debug = True
-```
-
-`optional_example.py`
 
 ```py3
-import typing
-import dataclasses
+BASIC(option1=10, option2=value2, option3=5.2, option4=['foo', 'bar'])
+```
+
+`examples/unions_and_optionals.py`
+
+```py3
+# This is a complete example and should work as is
+
+from typing import List, Union, Optional, Dict, Tuple
 from typed_configparser import ConfigParser
+from dataclasses import dataclass, field
 
-@dataclasses.dataclass
-class AppConfig:
-    host: str
-    port: int
-    debug: typing.Optional[bool]
 
-config_parser = ConfigParser()
-app_config = config_parser.parse_section(AppConfig, section_name='AppSection')
+@dataclass
+class DEFAULT_EXAMPLE:
+    option1: int
+    option2: Union[List[Tuple[str, str]], List[int]]
+    option3: Dict[str, str] = field(default_factory=lambda: {"default_key": "default_value"})
+    option4: Optional[float] = None
 
+
+config = """
+[DEFAULT]
+option1 = 20
+option2 = default_value2
+
+[MY_SECTION_1]
+option2 = [10,20]
+option4 = 5.2
+
+[MY_SECTION_2]
+option2 = [(value2a, value2b), (value2c, value2b), (value2c, value2d)]
+option3 = {key: value}
+option4 = none
+"""
+
+parser = ConfigParser()
+parser.read_string(config)
+my_section_1 = parser.parse_section(using_dataclass=DEFAULT_EXAMPLE, section_name="MY_SECTION_1")
+my_section_2 = parser.parse_section(using_dataclass=DEFAULT_EXAMPLE, section_name="MY_SECTION_2")
+
+print(my_section_1)
+print(my_section_2)
+```
+
+```py3
+DEFAULT_EXAMPLE(option1=20, option2=[10, 20], option3={'default_key': 'default_value'}, option4=5.2)
+DEFAULT_EXAMPLE(option1=20, option2=[('value2a', 'value2b'), ('value2c', 'value2b'), ('value2c', 'value2d')], option3={'key': 'value'}, option4=None)
 ```
 
 Check `example` directory for more examples.
@@ -92,7 +126,7 @@ Check `example` directory for more examples.
 ## Defaults
 
 - `configparser` includes sensible defaults options which allows you to declare a `[DEFAULT]` section in the config file for fallback values.
-- `typed_configparser` goes a step further and allows you to set a final level of defaults at dataclass level.
+- `typed_configparser` goes a step further and allows you to set a final (last) level of defaults at dataclass level.
 
 # License
 
