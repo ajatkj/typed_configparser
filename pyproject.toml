@@ -63,3 +63,34 @@ help = "Clear all cache."
 
 [tool.poe.tasks.test]
 cmd = "python3 -m unittest -v tests/tests.py"
+help = "Run tests"
+
+[tool.poe.tasks._coverage]
+shell = "coverage run -m unittest tests/tests.py"
+env.COVERAGE_FILE.default = ".coverage_default/coverage_local"
+env.CONTEXT.default = "default_context"
+
+[tool.poe.tasks._coverage_pre]
+shell = "mkdir -p $(dirname $COVERAGE_FILE)"
+env.COVERAGE_FILE.default = ".coverage_default/coverage_local"
+
+[tool.poe.tasks.coverage]
+sequence = ["_coverage_pre", "_coverage"]
+help = "Run coverage"
+
+[tool.poe.tasks.coverage_report]
+shell = "coverage report && coverage html --show-contexts --title 'typed_configparser coverage'"
+help = ""
+env.COVERAGE_FILE.default = ".coverage_default/coverage_local"
+env.CONTEXT.default = "default_context"
+
+[tool.coverage.report]
+exclude_also = [
+    "def _CUSTOM_REPR_METHOD",
+    "def _CUSTOM_STR_METHOD",
+    "from _typeshed",
+]
+
+[tool.coverage.run]
+omit = ["tests/*"]
+context = '${CONTEXT}'

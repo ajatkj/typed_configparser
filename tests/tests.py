@@ -20,12 +20,14 @@ class TestConfigParser(unittest.TestCase):
             option2: str
             option3: float
             option4: bool
+            option5: None
 
         self.config_parser.add_section(_SECTION_)
         self.config_parser.set(_SECTION_, "option1", "42")
         self.config_parser.set(_SECTION_, "option2", "value")
         self.config_parser.set(_SECTION_, "option3", "10.5")
         self.config_parser.set(_SECTION_, "option4", "True")
+        self.config_parser.set(_SECTION_, "option5", "None")
 
         result = self.config_parser.parse_section(TestDataclass, _SECTION_)
 
@@ -38,6 +40,8 @@ class TestConfigParser(unittest.TestCase):
         self.assertIsInstance(result.option3, float)
         self.assertEqual(result.option4, True)
         self.assertIsInstance(result.option4, bool)
+        self.assertEqual(result.option5, None)
+        self.assertIsInstance(result.option5, type(None))
 
     def test_parse_section_invalid_dataclass(self) -> None:
         class NotADataclass:
@@ -45,7 +49,7 @@ class TestConfigParser(unittest.TestCase):
 
         self.config_parser.add_section(_SECTION_)
 
-        with self.assertRaises(ParseError):
+        with self.assertRaisesRegex(ParseError, f"ParseError in section '{_SECTION_}'"):
             self.config_parser.parse_section(NotADataclass, _SECTION_)  # type: ignore
 
     def test_parse_section_extra_fields_allow(self) -> None:
@@ -200,8 +204,159 @@ class TestConfigParser(unittest.TestCase):
 
         self.config_parser.add_section(_SECTION_)
 
-        with self.assertRaises(ParseError):
+        with self.assertRaisesRegex(ParseError, f"ParseError in section '{_SECTION_}' for option 'option1'"):
             self.config_parser.parse_section(TestDataclass, _SECTION_)
+
+    def test_parse_section_invalid_boolean(self) -> None:
+        @dataclasses.dataclass
+        class TestDataclass:
+            option1: bool
+
+        self.config_parser.add_section(_SECTION_)
+        self.config_parser.set(_SECTION_, "option1", "foo")
+
+        with self.assertRaisesRegex(
+            ParseError, f"ParseError in section '{_SECTION_}' for option 'option1': Cannot cast value 'foo' to 'boolean'"
+        ):
+            self.config_parser.parse_section(TestDataclass, _SECTION_)
+
+    def test_parse_section_invalid_int(self) -> None:
+        @dataclasses.dataclass
+        class TestDataclass:
+            option1: int
+
+        self.config_parser.add_section(_SECTION_)
+        self.config_parser.set(_SECTION_, "option1", "foo")
+
+        with self.assertRaisesRegex(
+            ParseError, f"ParseError in section '{_SECTION_}' for option 'option1': Cannot cast value 'foo' to 'int'"
+        ):
+            self.config_parser.parse_section(TestDataclass, _SECTION_)
+
+    def test_parse_section_invalid_float(self) -> None:
+        @dataclasses.dataclass
+        class TestDataclass:
+            option1: float
+
+        self.config_parser.add_section(_SECTION_)
+        self.config_parser.set(_SECTION_, "option1", "foo")
+
+        with self.assertRaisesRegex(
+            ParseError, f"ParseError in section '{_SECTION_}' for option 'option1': Cannot cast value 'foo' to 'float'"
+        ):
+            self.config_parser.parse_section(TestDataclass, _SECTION_)
+
+    def test_parse_section_invalid_str(self) -> None:
+        @dataclasses.dataclass
+        class TestDataclass:
+            option1: str
+
+        self.config_parser.add_section(_SECTION_)
+        self.config_parser.set(_SECTION_, "option1", '["foo", "bar"]')
+
+        with self.assertRaisesRegex(
+            ParseError,
+            f"ParseError in section '{_SECTION_}' for option 'option1': Cannot cast value '"
+            + '\\["foo", "bar"\\]'
+            + "' to 'str'",
+        ):
+            self.config_parser.parse_section(TestDataclass, _SECTION_)
+
+    def test_parse_section_invalid_none(self) -> None:
+        @dataclasses.dataclass
+        class TestDataclass:
+            option1: None
+
+        self.config_parser.add_section(_SECTION_)
+        self.config_parser.set(_SECTION_, "option1", "foo")
+
+        with self.assertRaisesRegex(
+            ParseError, f"ParseError in section '{_SECTION_}' for option 'option1': Cannot cast value 'foo' to 'None'"
+        ):
+            self.config_parser.parse_section(TestDataclass, _SECTION_)
+
+    def test_parse_section_invalid_union(self) -> None:
+        @dataclasses.dataclass
+        class TestDataclass:
+            option1: typing.Union[int, float]
+
+        self.config_parser.add_section(_SECTION_)
+        self.config_parser.set(_SECTION_, "option1", "foo")
+
+        with self.assertRaisesRegex(
+            ParseError,
+            f"ParseError in section '{_SECTION_}' for option 'option1': Cannot cast value 'foo' to 'union type'",
+        ):
+            self.config_parser.parse_section(TestDataclass, _SECTION_)
+
+    def test_parse_section_invalid_list(self) -> None:
+        @dataclasses.dataclass
+        class TestDataclass:
+            option1: typing.List[int]
+
+        self.config_parser.add_section(_SECTION_)
+        self.config_parser.set(_SECTION_, "option1", "12")
+
+        with self.assertRaisesRegex(
+            ParseError, f"ParseError in section '{_SECTION_}' for option 'option1': Cannot cast value '12' to 'list'"
+        ):
+            self.config_parser.parse_section(TestDataclass, _SECTION_)
+
+    def test_parse_section_invalid_tuple(self) -> None:
+        @dataclasses.dataclass
+        class TestDataclass:
+            option1: typing.Tuple[str, int]
+
+        self.config_parser.add_section(_SECTION_)
+        self.config_parser.set(_SECTION_, "option1", "12")
+
+        with self.assertRaisesRegex(
+            ParseError, f"ParseError in section '{_SECTION_}' for option 'option1': Cannot cast value '12' to 'tuple'"
+        ):
+            self.config_parser.parse_section(TestDataclass, _SECTION_)
+
+    def test_parse_section_invalid_dict(self) -> None:
+        @dataclasses.dataclass
+        class TestDataclass:
+            option1: typing.Dict[str, int]
+
+        self.config_parser.add_section(_SECTION_)
+        self.config_parser.set(_SECTION_, "option1", "foo")
+
+        with self.assertRaisesRegex(
+            ParseError, f"ParseError in section '{_SECTION_}' for option 'option1': Cannot cast value 'foo' to 'dict'"
+        ):
+            self.config_parser.parse_section(TestDataclass, _SECTION_)
+
+    def test_parse_section_invalid_any(self) -> None:
+        class CustomType:
+            def __init__(self) -> None:
+                pass
+
+        @dataclasses.dataclass
+        class TestDataclass:
+            option1: CustomType
+
+        self.config_parser.add_section(_SECTION_)
+        self.config_parser.set(_SECTION_, "option1", "foo")
+
+        with self.assertRaisesRegex(
+            ParseError,
+            f"ParseError in section '{_SECTION_}' for option 'option1': Cannot cast value 'foo' to 'CustomType'",
+        ):
+            self.config_parser.parse_section(TestDataclass, _SECTION_)
+
+    def test_parse_section_default_factory(self) -> None:
+        @dataclasses.dataclass
+        class TestDataclass:
+            option1: typing.List[str] = dataclasses.field(default_factory=lambda: ["foo", "bar", "baz"])
+
+        self.config_parser.add_section(_SECTION_)
+        result = self.config_parser.parse_section(TestDataclass, _SECTION_)
+
+        self.assertIsInstance(result, TestDataclass)
+        self.assertEqual(result.option1, ["foo", "bar", "baz"])
+        self.assertIsInstance(result.option1, typing.List)
 
 
 def start_test() -> None:

@@ -33,10 +33,11 @@ _REGEX_ = r",(?![^\[\(\{]*[\]\)\}])"
 LIST_TYPE = (list, typing.List)
 DICT_TYPE = (dict, typing.Dict)
 TUPLE_TYPE = (tuple, typing.Tuple)
-if sys.version_info >= (3, 10):
+
+if sys.version_info >= (3, 10):  # pragma: no cover
     UNION_TYPE = (types.UnionType, typing.Union)
     NONE_TYPE = (types.NoneType, type(None))
-else:
+else:  # pragma: no cover
     UNION_TYPE = (typing.Union,)
     NONE_TYPE = (type(None),)
 
@@ -78,7 +79,7 @@ def get_types(typ: typing.Type[typing.Any]) -> typing.Any:
 
 def cast_bool(section: str, option: str, value: str) -> bool:
     if value.lower() not in BOOLEAN_STATES:
-        raise ParseError(f"Cannot cast value '{value}' to boolean", section, option=option)
+        raise ParseError(f"Cannot cast value '{value}' to 'boolean'", section, option=option)
     return BOOLEAN_STATES[value.lower()]
 
 
@@ -86,38 +87,38 @@ def cast_none(section: str, option: str, value: str) -> None:
     if value and value.lower() in NONE_VALUES:
         return None
 
-    raise ParseError(f"Cannot cast value '{value}' to None", section, option=option)
+    raise ParseError(f"Cannot cast value '{value}' to 'None'", section, option=option)
 
 
 def cast_any(section: str, option: str, value: str, target_type: typing.Any) -> typing.Any:
     try:
         return target_type(value)
     except Exception:
-        raise ParseError(f"Cannot cast value '{value}' to {target_type}", section, option=option)
+        raise ParseError(f"Cannot cast value '{value}' to '{target_type.__name__}'", section, option=option)
 
 
 def cast_int(section: str, option: str, value: str) -> typing.Any:
     try:
         return int(value)
     except Exception:
-        raise ParseError(f"Cannot cast value '{value}' to int", section, option=option)
+        raise ParseError(f"Cannot cast value '{value}' to 'int'", section, option=option)
 
 
 def cast_float(section: str, option: str, value: str) -> typing.Any:
     try:
         return float(value)
     except Exception:
-        raise ParseError(f"Cannot cast value '{value}' to float", section, option=option)
+        raise ParseError(f"Cannot cast value '{value}' to 'float'", section, option=option)
 
 
 def cast_str(section: str, option: str, value: str) -> typing.Any:
     if is_list(value) or is_tuple(value) or is_dict(value):
-        raise ParseError(f"Cannot cast value '{value}' to str", section, option=option)
+        raise ParseError(f"Cannot cast value '{value}' to 'str'", section, option=option)
 
     try:
         return str(value)
-    except Exception:
-        raise ParseError(f"Cannot cast value '{value}' to int", section, option=option)
+    except Exception:  # pragma: no cover
+        raise ParseError(f"Cannot cast value '{value}' to 'str'", section, option=option)
 
 
 def cast_value_wrapper(section: str, option: str, value: str, target_type: typing.Any) -> typing.Any:
@@ -149,19 +150,19 @@ def cast_value_wrapper(section: str, option: str, value: str, target_type: typin
                         return cast_value(value, arg)
                     except Exception:
                         continue
-                raise ParseError(f"Cannot cast value '{value}'", section, option=option)
+                raise ParseError(f"Cannot cast value '{value}' to 'union type'", section, option=option)
             elif origin in LIST_TYPE:
                 if is_list(value):
                     values = re.split(_REGEX_, strip(value, "[", "]"))
                     return [cast_value(item.strip(), args) for item in values]
                 else:
-                    raise ParseError(f"Cannot cast value '{value}' to list", section, option=option)
+                    raise ParseError(f"Cannot cast value '{value}' to 'list'", section, option=option)
             elif origin in TUPLE_TYPE:
                 if is_tuple(value):
                     values = re.split(_REGEX_, strip(value, "(", ")"))
                     return tuple([cast_value(item.strip(), arg) for item, arg in zip(values, args)])
                 else:
-                    raise ParseError(f"Cannot cast value '{value}' to tuple", section, option=option)
+                    raise ParseError(f"Cannot cast value '{value}' to 'tuple'", section, option=option)
             elif origin in DICT_TYPE:
                 if is_dict(value):
                     values = re.split(_REGEX_, strip(value, "{", "}"))
@@ -170,7 +171,7 @@ def cast_value_wrapper(section: str, option: str, value: str, target_type: typin
                         for k, _, v in (val.partition(":") for val in values)
                     }
                 else:
-                    raise ParseError(f"Cannot cast value '{value}' to dict", section, option=option)
+                    raise ParseError(f"Cannot cast value '{value}' to 'dict'", section, option=option)
         elif isinstance(target_type, LIST_TYPE):
             for arg in target_type:
                 return cast_value(value, arg)
@@ -182,7 +183,7 @@ def cast_value_wrapper(section: str, option: str, value: str, target_type: typin
             return cast_str(section, option, value)
         elif target_type == bool:
             return cast_bool(section, option, value)
-        elif target_type in NONE_TYPE:
+        elif target_type is None:
             return cast_none(section, option, value)
         else:
             return cast_any(section, option, value, target_type)
@@ -223,7 +224,7 @@ def strip(value: str, first: str, last: str) -> str:
     """Strip single matching first and last character only if both match"""
     if value.startswith(first) and value.endswith(last):
         return value[1:-1]
-    return value
+    return value  # pragma: no cover
 
 
 def generate_field(key: str) -> typing.Any:
@@ -278,7 +279,7 @@ class ConfigParser(configparser.ConfigParser):
             return lambda val: cast_value_wrapper(section, option, val, get_types(typ))
         except KeyError:
             return str
-        except Exception:
+        except Exception:  # pragma: no cover
             raise
 
     def _getitem(self, section: str, option: str) -> typing.Any:
