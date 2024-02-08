@@ -2,9 +2,12 @@
   <img src="https://raw.githubusercontent.com/ajatkj/typed_configparser/main/assets/logo.png" alt="Description of the image">
 </p>
 <p align="center">
-<a href="https://github.com/ajatkj/typed_configparser/actions?query=workflow%3ATest+event%3Apush+branch%3Amain" target="_blank">
-    <img src="https://img.shields.io/github/actions/workflow/status/ajatkj/typed_configparser/tests.yml?branch=main&event=push&style=flat-square&label=test&color=%2334D058" alt="Test">
-</a>
+  <a href="https://github.com/ajatkj/typed_configparser/actions?query=workflow%3ATest+event%3Apush+branch%3Amain" target="_blank">
+      <img src="https://img.shields.io/github/actions/workflow/status/ajatkj/typed_configparser/tests.yml?branch=main&event=push&style=flat-square&label=test&color=%2334D058" alt="Test">
+  </a>
+  <a href="https://app.codecov.io/gh/ajatkj/typed_configparser/tree/main/" target="_blank">
+      <img src="https://img.shields.io/codecov/c/github/ajatkj/typed_configparser?color=%2334D058&style=flat-square" alt="Coverage">
+  </a>
   <a href="https://pypi.org/project/typed-configparser" target="_blank">
       <img src="https://img.shields.io/pypi/v/typed-configparser?color=%2334D058&label=pypi%20package&style=flat-square" alt="Package version">
   </a>
