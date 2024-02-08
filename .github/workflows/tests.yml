@@ -80,7 +80,7 @@ jobs:
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
-          directory: ./htmlcov
+          directory: coverage
           verbose: true
 
   # https://github.com/marketplace/actions/alls-green
