@@ -2,3 +2,4 @@ mypy
 ruff
 poethepoet
 pre-commit
+coverage
