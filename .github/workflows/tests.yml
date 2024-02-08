@@ -80,14 +80,11 @@ jobs:
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
-          directory: coverage
           verbose: true
 
   # https://github.com/marketplace/actions/alls-green
   check: # This job does nothing and is only used for the branch protection
     if: always()
-    outputs:
-      result: ${{ steps.all-green.outputs.result }}
     needs:
       - coverage-combine
     runs-on: ubuntu-latest
