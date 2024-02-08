@@ -75,6 +75,13 @@ jobs:
         with:
           name: coverage-html
           path: htmlcov
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v4
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        with:
+          directory: ./htmlcov
+          verbose: true
 
   # https://github.com/marketplace/actions/alls-green
   check: # This job does nothing and is only used for the branch protection
