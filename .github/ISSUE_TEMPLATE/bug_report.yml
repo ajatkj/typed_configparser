@@ -3,49 +3,47 @@ description: Report a bug or unexpected behavior in typed_configparser
 labels: [bug, pending]
 
 body:
+  - type: markdown
+    attributes:
+      value: Thank you for contributing to typed_configparser!
 
-- type: markdown
-  attributes:
-    value: Thank you for contributing to typed_configparser!
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: |
+        Please explain what you're seeing and what you would expect to see.
+        Please provide as much detail as possible to make understanding and solving your problem as quick as possible.
+    validations:
+      required: true
 
-- type: textarea
-  id: description
-  attributes:
-    label: Description
-    description: |
-      Please explain what you're seeing and what you would expect to see.
-      Please provide as much detail as possible to make understanding and solving your problem as quick as possible.
-  validations:
-    required: true
+  - type: textarea
+    id: example
+    attributes:
+      label: Example Code
+      description: >
+        If applicable, please add a self-contained,
+        [minimal, reproducible, example](https://stackoverflow.com/help/minimal-reproducible-example)
+        demonstrating the bug.
 
-- type: textarea
-  id: example
-  attributes:
-    label: Example Code
-    description: >
-    If applicable, please add a self-contained,
-    [minimal, reproducible, example](https://stackoverflow.com/help/minimal-reproducible-example)
-    demonstrating the bug.
+      placeholder: |
+        from typed_configparser import ConfigParser
 
-    placeholder: |
-    from typed_configparser import ConfigParser
+        ...
+      render: Python
 
-    ...
+  - type: textarea
+    id: version
+    attributes:
+      label: Python, typed_configparser & OS Version
+      description: |
+        Which version of Python & typed_configparser are you using, and which Operating System?
+        Please run the following command for the version and copy the output below:
 
-    render: Python
+        ```bash
+        python -c "import typed_configparser; print(typed_configparser.__version__)"
+        ```
 
-- type: textarea
-  id: version
-  attributes:
-    label: Python, typed_configparser & OS Version
-    description: |
-      Which version of Python & typed_configparser are you using, and which Operating System?
-      Please run the following command for the version and copy the output below:
-
-      ```bash
-      python -c "import typed_configparser; print(typed_configparser.__version__)"
-      ```
-
-    render: Text
-  validations:
-    required: true
+      render: Text
+    validations:
+      required: true
