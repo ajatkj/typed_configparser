@@ -1,7 +1,6 @@
 # Contributing
 
 I'd love you to contribute to typed_configparser!
-zw
 
 ## Issues
 

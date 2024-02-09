@@ -134,3 +134,7 @@ Check `example` directory for more examples.
 # License
 
 [MIT License](./LICENSE)
+
+# Contribution
+
+If you are interested in contributing to typed_configparser, please take a look at the [contributing guidelines](./CONTRIBUTING.md).
