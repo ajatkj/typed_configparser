@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Ask a Question
+    url: "https://github.com/ajatkj/typed_configparser/discussions/new?category=q-a"
+    about: Ask a question about how to use typed_configparser using github discussions
