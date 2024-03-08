@@ -60,7 +60,7 @@ class TestConfigParser(unittest.TestCase):
         self.config_parser.add_section(_SECTION_)
 
         with self.assertRaisesRegex(TypeError, "init flag must be True for dataclass 'TestDataclass'"):
-            self.config_parser.parse_section(TestDataclass, _SECTION_)  # type: ignore
+            self.config_parser.parse_section(TestDataclass, _SECTION_)
 
     def test_parse_section_extra_fields_allow(self) -> None:
         @dataclasses.dataclass
@@ -392,7 +392,7 @@ class TestConfigParser(unittest.TestCase):
             option1: int
             option2: float = dataclasses.field(init=False)
 
-            def __post_init__(self):
+            def __post_init__(self) -> None:
                 self.option2 = self.option1 + 20.2
 
         self.config_parser.add_section(_SECTION_)
@@ -413,7 +413,7 @@ class TestConfigParser(unittest.TestCase):
             option3: typing.Optional[str] = None
             option4: dataclasses.InitVar[typing.Optional[str]] = None
 
-            def __post_init__(self, option2, option4):
+            def __post_init__(self, option2: typing.Optional[str], option4: typing.Optional[str]) -> None:
                 self.option3 = option2
 
         self.config_parser.add_section(_SECTION_)
