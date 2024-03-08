@@ -5,6 +5,8 @@ import sys
 import types
 import typing
 
+import typing_extensions
+
 from typed_configparser.exceptions import ParseError
 
 if typing.TYPE_CHECKING:
@@ -12,6 +14,9 @@ if typing.TYPE_CHECKING:
 
 T = typing.TypeVar("T", bound="DataclassInstance")
 
+# This is a hack to make sure get_type_hints work correctly for InitVar
+# when __future__ annotations is turned on
+dataclasses.InitVar.__call__ = lambda *args: None  # type: ignore[method-assign]
 
 BOOLEAN_STATES = {
     "1": True,
@@ -42,10 +47,6 @@ else:  # pragma: no cover
     NONE_TYPE = (type(None),)
 
 
-def _CUSTOM_INIT_METHOD(self: T) -> None:
-    pass
-
-
 def _CUSTOM_REPR_METHOD(self: T) -> str:
     fields_str = ", ".join(f"{field.name}={getattr(self, field.name)}" for field in self.__dataclass_fields__.values())
     return f"{self.__class__.__name__}({fields_str})"
@@ -67,8 +68,8 @@ def get_types(typ: typing.Type[typing.Any]) -> typing.Any:
         Any: A dictionary containing information about the type, including its origin and arguments.
 
     """
-    origin = typing.get_origin(typ)
-    args = typing.get_args(typ)
+    origin = typing_extensions.get_origin(typ)
+    args = typing_extensions.get_args(typ)
     if origin is None:
         return typ
     result = {_ORIGIN_KEY_: origin, _ARGS_KEY_: []}
@@ -121,6 +122,10 @@ def cast_str(section: str, option: str, value: str) -> typing.Any:
         raise ParseError(f"Cannot cast value '{value}' to 'str'", section, option=option)
 
 
+def get_name(args: typing.List[type]) -> str:
+    return "|".join([getattr(arg, "__name__", repr(arg)) for arg in args])
+
+
 def cast_value_wrapper(section: str, option: str, value: str, target_type: typing.Any) -> typing.Any:
     def cast_value(value: str, target_type: typing.Any) -> typing.Any:
         """
@@ -150,7 +155,12 @@ def cast_value_wrapper(section: str, option: str, value: str, target_type: typin
                         return cast_value(value, arg)
                     except Exception:
                         continue
-                raise ParseError(f"Cannot cast value '{value}' to 'union type'", section, option=option)
+
+                raise ParseError(
+                    f"Cannot cast value '{value}' to '({get_name(args)})' type",
+                    section,
+                    option=option,
+                )
             elif origin in LIST_TYPE:
                 if is_list(value):
                     values = re.split(_REGEX_, strip(value, "[", "]"))
@@ -183,7 +193,7 @@ def cast_value_wrapper(section: str, option: str, value: str, target_type: typin
             return cast_str(section, option, value)
         elif target_type == bool:
             return cast_bool(section, option, value)
-        elif target_type is None:
+        elif target_type in NONE_TYPE:
             return cast_none(section, option, value)
         else:
             return cast_any(section, option, value, target_type)
@@ -198,6 +208,11 @@ def is_field_optional(typ: typing.Type[T]) -> bool:
         return any(N_ in typs.get(_ARGS_KEY_, ()) for N_ in NONE_TYPE)
     else:
         return typs in NONE_TYPE
+
+
+def is_field_default(field: typing.Any) -> bool:
+    assert isinstance(field, dataclasses.Field)
+    return field.default != dataclasses.MISSING or field.default_factory != dataclasses.MISSING or field.init is False
 
 
 def is_list(value: str) -> bool:
@@ -227,10 +242,12 @@ def strip(value: str, first: str, last: str) -> str:
     return value  # pragma: no cover
 
 
-def generate_field(key: str) -> typing.Any:
+def generate_field(key: str, default: typing.Optional[str] = None) -> typing.Any:
     """Get a new empty field with just the name attribute"""
     f = dataclasses.field()
     f.name = key
+    if default:
+        f.default = default
     return f
 
 
@@ -274,13 +291,16 @@ class ConfigParser(configparser.ConfigParser):
 
         """
         config_class = self.__config_class_mapper__.get(section)
-        try:
-            typ = config_class.__annotations__[option]
-            return lambda val: cast_value_wrapper(section, option, val, get_types(typ))
-        except KeyError:
-            return str
-        except Exception:  # pragma: no cover
-            raise
+        if config_class:
+            try:
+                typ = typing_extensions.get_type_hints(config_class)[option]
+                return lambda val: cast_value_wrapper(section, option, val, get_types(typ))
+            except KeyError:
+                return str
+            except Exception:  # pragma: no cover
+                raise
+        else:  # pragma: no cover
+            raise TypeError("Config class not found")
 
     def _getitem(self, section: str, option: str) -> typing.Any:
         """
@@ -304,6 +324,7 @@ class ConfigParser(configparser.ConfigParser):
         using_dataclass: typing.Type[T],
         section_name: typing.Union[str, None] = None,
         extra: typing.Literal["allow", "ignore", "error"] = "allow",
+        init_vars: typing.Dict[str, typing.Any] = {},
     ) -> T:
         """
         Parse a configuration section into a dataclass instance.
@@ -314,7 +335,9 @@ class ConfigParser(configparser.ConfigParser):
                 If None, the name is derived from the dataclass name. Defaults to None.
             extra (Literal["allow", "ignore", "error"], optional): How to handle extra fields
                 not present in the dataclass. "allow" allows extra fields, "ignore" ignores them,
-                and "error" raises an ExtraFieldsError. Defaults to "allow".
+                and "error" raises an ParseError. Defaults to "allow".
+            init_vars (Dict[str, Any]): For any InitVars on dataclass, send values here as a dict
+                which will be send to dataclasses's init method and eventually to post_init method.
 
         Returns:
             T: An instance of the specified dataclass populated with values from the configuration section.
@@ -334,44 +357,82 @@ class ConfigParser(configparser.ConfigParser):
         if not is_dataclass(using_dataclass):
             raise ParseError(f"{using_dataclass.__name__} is not a valid dataclass", section_name_)
 
+        if params := getattr(using_dataclass, "__dataclass_params__", None):
+            if (init := getattr(params, "init", None)) is not None:
+                if init is False:
+                    raise TypeError(f"init flag must be True for dataclass '{using_dataclass.__name__}'")
+
         self.__config_class_mapper__[section_name_] = using_dataclass
-
-        # Irrespective of whether init flag is set to False or True for the dataclass,
-        # we set it to an empty method to avoid any error
-        using_dataclass.__init__ = _CUSTOM_INIT_METHOD  # type: ignore[assignment]
-
-        section = using_dataclass()
-        dataclass_fields = {f.name for f in dataclasses.fields(section)}
+        # This are just "fields" and doesn't contain classvar or initvar fields
+        dataclass_fields = {item.name: item for item in dataclasses.fields(using_dataclass)}
+        initvar_fields = {
+            item.name: item
+            for item in using_dataclass.__dataclass_fields__.values()
+            if item._field_type is dataclasses._FIELD_INITVAR  # type: ignore [attr-defined]
+        }
         options = []
+        # Adding all keys to args initially to maintain the order of position arguments
+        # to be sent to dataclass init method. It is not required for keyword arguments
+        args = {k: v for k, v in dataclass_fields.items() if not is_field_default(v)}
+        kwargs = {}
+        extra_fields = {}
+        seen = set()
 
-        # Extract all (typed) options from a section and assign to the dataclass instance
+        # Iterate through config section to update args & kwargs
+        # for fields present in dataclass. Anything not found in
+        # dataclass is added to extra_fields
         for key, _ in self.items(section_name_):
             value = self._getitem(section_name_, key)
             options.append(key)
-            if (key not in dataclass_fields and extra == "allow") or key in dataclass_fields:
-                setattr(section, key, value)
+            if key in dataclass_fields:
+                field_info = dataclass_fields[key]
+                if is_field_default(field_info):
+                    kwargs[key] = value
+                else:
+                    args[key] = value
+                seen.add(key)
+            else:
+                extra_fields[key] = generate_field(key, default=value)
 
-        extra_fields = {key: generate_field(key) for key in options if key not in dataclass_fields}
+        # Now iterate through dataclass fields and update default value of
+        # any "Optional" fields to None.
+        # Any non-"Optional" fields present in dataclass but not found in
+        # config options are missing fields and should raise error
+        missing_fields = []
+        for field, field_info in dataclass_fields.items():
+            field_type = typing_extensions.get_type_hints(using_dataclass)[field]
+            if not is_field_default(field_info) and field not in seen:
+                if is_field_optional(field_type):
+                    args[field] = None  # type: ignore
+                elif field not in options:
+                    missing_fields.append(field)
+
+        # Supply initvars as kwargs to the dataclass call
+        for field, field_info in initvar_fields.items():
+            if field in init_vars:
+                kwargs[field] = init_vars[field]
+            else:
+                kwargs[field] = None
+
+        if len(missing_fields) > 0:
+            raise ParseError(
+                "Unable to find value in section, default section or dataclass defaults",
+                section_name_,
+                ", ".join(missing_fields),
+            )
+
         if len(extra_fields) > 0 and extra == "error":
             raise ParseError("Extra fields are not allowed in configuration.", section_name_)
 
-        # Set optional fields to None which are not present in config options,
-        # and neither have a default set in the dataclass
-        for field_, field_info in using_dataclass.__dataclass_fields__.items():
-            if field_ not in options and field_ not in using_dataclass.__dict__:
-                if field_info.default_factory != dataclasses.MISSING:
-                    setattr(section, field_, field_info.default_factory())
-                elif is_field_optional(field_info.type):
-                    setattr(section, field_, None)
-                else:
-                    raise ParseError(
-                        "Unable to find value in section, default section or dataclass default",
-                        section_name_,
-                        option=field_,
-                    )
+        section = using_dataclass(*args.values(), **kwargs)
 
-        using_dataclass.__dataclass_fields__.update(extra_fields)
-        setattr(using_dataclass, "__dataclass_extra_fields__", extra_fields)
-        using_dataclass.__repr__ = _CUSTOM_REPR_METHOD  # type: ignore[assignment]
-        using_dataclass.__str__ = _CUSTOM_STR_METHOD  # type: ignore[assignment]
+        if extra_fields and extra == "allow":
+            for k, f in extra_fields.items():
+                setattr(section, k, f.default)
+            setattr(using_dataclass, "__dataclass_extra_fields__", extra_fields)
+            using_dataclass.__dataclass_fields__.update(extra_fields)
+            # Since __repr__ and __str__ are created when dataclass is created using @dataclass
+            # decorator, we need to rewrite our own methods for extra fields
+            using_dataclass.__repr__ = _CUSTOM_REPR_METHOD  # type: ignore[assignment]
+            using_dataclass.__str__ = _CUSTOM_STR_METHOD  # type: ignore[assignment]
         return section

@@ -26,6 +26,7 @@ It leverages Python's type hints and dataclasses to provide a convenient way of 
 ✓ Fully typed.<br />
 ✓ Use dataclasses to parse the configuration file.<br />
 ✓ Support for almost all python built-in data types - `int`, `float`, `str`, `list`, `tuple`, `dict` and complex data types using `Union` and `Optional`.<br />
+✓ Supports almost all features of dataclasses including field level init flag, **post_init** method, InitVars and more.<br />
 ✓ Built on top of `configparser`, hence retains all functionalities of `configparser`.<br />
 ✓ Support for optional values (optional values are automatically set to `None` if not provided).<br />
 ✓ Smarter defaults (see below).
