@@ -52,6 +52,16 @@ class TestConfigParser(unittest.TestCase):
         with self.assertRaisesRegex(ParseError, f"ParseError in section '{_SECTION_}'"):
             self.config_parser.parse_section(NotADataclass, _SECTION_)  # type: ignore
 
+    def test_parse_section_dataclass_init_false(self) -> None:
+        @dataclasses.dataclass(init=False)
+        class TestDataclass:
+            option1: int
+
+        self.config_parser.add_section(_SECTION_)
+
+        with self.assertRaisesRegex(TypeError, "init flag must be True for dataclass 'TestDataclass'"):
+            self.config_parser.parse_section(TestDataclass, _SECTION_)  # type: ignore
+
     def test_parse_section_extra_fields_allow(self) -> None:
         @dataclasses.dataclass
         class TestDataclass:
@@ -160,11 +170,13 @@ class TestConfigParser(unittest.TestCase):
             option1: typing.Optional[str]
             option2: str
             option3: typing.Optional[int] = 0
+            option4: typing.Optional[float] = 10.2
 
         self.config_parser.set("DEFAULT", "option1", "default_value1")
         self.config_parser.set("DEFAULT", "option2", "default_value2")
         self.config_parser.add_section(_SECTION_)
         self.config_parser.set(_SECTION_, "option1", "test_value1")
+        self.config_parser.set(_SECTION_, "option4", "11.2")
 
         result = self.config_parser.parse_section(TestDataclass, _SECTION_)
         self.assertIsInstance(result, TestDataclass)
@@ -174,6 +186,8 @@ class TestConfigParser(unittest.TestCase):
         self.assertIsInstance(result.option2, str)
         self.assertEqual(result.option3, 0)
         self.assertIsInstance(result.option3, int)
+        self.assertEqual(result.option4, 11.2)
+        self.assertIsInstance(result.option4, float)
 
     def test_parse_section_arbitrary_types(self) -> None:
         @dataclasses.dataclass
@@ -285,7 +299,7 @@ class TestConfigParser(unittest.TestCase):
 
         with self.assertRaisesRegex(
             ParseError,
-            f"ParseError in section '{_SECTION_}' for option 'option1': Cannot cast value 'foo' to 'union type'",
+            f"ParseError in section '{_SECTION_}' for option 'option1': Cannot cast value 'foo' to '\(int|float\)' type",
         ):
             self.config_parser.parse_section(TestDataclass, _SECTION_)
 
@@ -357,6 +371,58 @@ class TestConfigParser(unittest.TestCase):
         self.assertIsInstance(result, TestDataclass)
         self.assertEqual(result.option1, ["foo", "bar", "baz"])
         self.assertIsInstance(result.option1, typing.List)
+
+    def test_parse_section_field_level_init_flag(self) -> None:
+        @dataclasses.dataclass
+        class TestDataclass:
+            option1: int
+            option2: float = dataclasses.field(init=False)
+
+        self.config_parser.add_section(_SECTION_)
+        self.config_parser.set(_SECTION_, "option1", "10")
+        result = self.config_parser.parse_section(TestDataclass, _SECTION_)
+
+        self.assertIsInstance(result, TestDataclass)
+        self.assertEqual(result.option1, 10)
+        self.assertFalse(hasattr(result, "option2"))
+
+    def test_parse_section_post_init_method(self) -> None:
+        @dataclasses.dataclass
+        class TestDataclass:
+            option1: int
+            option2: float = dataclasses.field(init=False)
+
+            def __post_init__(self):
+                self.option2 = self.option1 + 20.2
+
+        self.config_parser.add_section(_SECTION_)
+        self.config_parser.set(_SECTION_, "option1", "10")
+        result = self.config_parser.parse_section(TestDataclass, _SECTION_)
+
+        self.assertIsInstance(result, TestDataclass)
+        self.assertIsInstance(result.option1, int)
+        self.assertEqual(result.option1, 10)
+        self.assertIsInstance(result.option2, float)
+        self.assertEqual(result.option2, 30.2)
+
+    def test_parse_section_initvars(self) -> None:
+        @dataclasses.dataclass
+        class TestDataclass:
+            option1: int
+            option2: dataclasses.InitVar[typing.Optional[str]] = None
+            option3: typing.Optional[str] = None
+            option4: dataclasses.InitVar[typing.Optional[str]] = None
+
+            def __post_init__(self, option2, option4):
+                self.option3 = option2
+
+        self.config_parser.add_section(_SECTION_)
+        self.config_parser.set(_SECTION_, "option1", "10")
+        result = self.config_parser.parse_section(TestDataclass, _SECTION_, init_vars={"option2": "foo"})
+
+        self.assertIsInstance(result, TestDataclass)
+        self.assertEqual(result.option1, 10)
+        self.assertEqual(result.option3, "foo")
 
 
 def start_test() -> None:
